@@ -30,7 +30,7 @@ import java.util.Random;
  *   Moves to the best improving neighbour; repeats until no improvement.
  *
  * PERTURBATION – Random k-Bit Flip:
- *   Randomly flips PERTURBATION_STRENGTH bits (default 4).  This creates
+ *   Randomly flips PERTURBATION_STRENGTH bits .  This creates
  *   a "jump" in the search space large enough to escape the current local
  *   optimum basin of attraction while remaining close enough to retain
  *   useful structure.
@@ -55,8 +55,8 @@ public class IteratedLocalSearch {
     /*  Configuration constants                                             */
     /* ------------------------------------------------------------------ */
 
-    public static final int MAX_ITERATIONS         = 1000;
-    public static final int PERTURBATION_STRENGTH  = 4;
+    public static final int MAX_ITERATIONS         = 100;
+    public static final double PERTURBATION_STRENGTH  = 0.05;
 
     /* ------------------------------------------------------------------ */
     /*  Fields                                                              */

@@ -33,7 +33,7 @@ import java.util.Random;
  *   Population size   : 100
  *   Max generations   : 500
  *   Crossover rate    : 0.85
- *   Mutation rate     : 0.02  (per gene)
+ *   Mutation rate     : 0.002  (per gene)
  *   Selection         : binary tournament (k = 2)
  *   Elitism           : top-1 individual preserved
  * =============================================================================
@@ -47,7 +47,7 @@ public class GeneticAlgorithm {
     public static final int    POPULATION_SIZE  = 100;
     public static final int    MAX_GENERATIONS  = 500;
     public static final double CROSSOVER_RATE   = 0.85;
-    public static final double MUTATION_RATE    = 0.02;
+    public static final double MUTATION_RATE    = 0.002;
     public static final int    TOURNAMENT_SIZE  = 2;
 
     /* ------------------------------------------------------------------ */

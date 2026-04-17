@@ -58,8 +58,9 @@ public class InstanceLoader {
                     throw new IOException(
                         "Malformed item line " + (i + 2) + " in: " + filePath);
                 }
-                weights[i] = Integer.parseInt(parts[0]);
-                values[i]  = Integer.parseInt(parts[1]);
+                // Parse as double first (handles both integer and decimal values), then convert to int
+                weights[i] = (int) Math.round(Double.parseDouble(parts[0]));
+                values[i]  = (int) Math.round(Double.parseDouble(parts[1]));
             }
 
             return new KnapsackInstance(instName, capacity, weights, values);
