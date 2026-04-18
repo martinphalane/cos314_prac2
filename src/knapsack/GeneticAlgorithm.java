@@ -22,18 +22,18 @@ import java.util.Random;
  *                   cut-point (single-point crossover), producing two
  *                   offspring.
  *   3. MUTATION   – each gene is flipped independently with probability
- *                   MUTATION_RATE (bit-flip mutation).
+ *                   mutationRate (bit-flip mutation).
  *   4. REPAIR     – infeasible chromosomes are repaired greedily: items
  *                   are removed in ascending value/weight ratio order
  *                   until the weight constraint is satisfied.
  *   5. ELITISM    – the best individual from the current generation is
  *                   always carried over to the next unchanged.
  *
- * CONFIGURATION (tuned empirically):
- *   Population size   : 100
- *   Max generations   : 500
+ * CONFIGURATION (scales with instance size n):
+ *   Population size   : max(100, 10*n)  – larger populations for larger instances
+ *   Max generations   : max(500, 50*n)  – more generations for larger instances
  *   Crossover rate    : 0.85
- *   Mutation rate     : 0.002  (per gene)
+ *   Mutation rate     : 1.0/n  (one expected flip per chromosome)
  *   Selection         : binary tournament (k = 2)
  *   Elitism           : top-1 individual preserved
  * =============================================================================
@@ -44,10 +44,7 @@ public class GeneticAlgorithm {
     /*  Configuration constants                                             */
     /* ------------------------------------------------------------------ */
 
-    public static final int    POPULATION_SIZE  = 100;
-    public static final int    MAX_GENERATIONS  = 500;
     public static final double CROSSOVER_RATE   = 0.85;
-    public static final double MUTATION_RATE    = 0.002;
     public static final int    TOURNAMENT_SIZE  = 2;
 
     /* ------------------------------------------------------------------ */
@@ -56,6 +53,11 @@ public class GeneticAlgorithm {
 
     private final KnapsackInstance instance;
     private final Random            rng;
+
+    /* Adaptive parameters set in solve() based on n */
+    private int    populationSize;
+    private int    maxGenerations;
+    private double mutationRate;
 
     /** Best solution found. */
     private boolean[] bestChromosome;
@@ -80,11 +82,17 @@ public class GeneticAlgorithm {
 
     /**
      * Runs the GA and returns the best fitness value found.
+     * Parameters are scaled adaptively based on instance size.
      */
     public int solve() {
         int n = instance.getNumItems();
 
-        /* ---- Initialise population ---- */
+        /* Adaptive parameter scaling */
+        populationSize = Math.min(Math.max(100, 5 * n), 200);
+        maxGenerations = Math.min(Math.max(500, 20 * n), 2000);
+        mutationRate   = 1.0 / n;   // expected ~1 flip per chromosome
+
+        /* ---- Initialise population with mixed greedy+random ---- */
         boolean[][] population = initialisePopulation(n);
         repairPopulation(population);
 
@@ -92,13 +100,13 @@ public class GeneticAlgorithm {
         bestFitness    = Integer.MIN_VALUE;
 
         /* ---- Generational loop ---- */
-        for (int gen = 0; gen < MAX_GENERATIONS; gen++) {
+        for (int gen = 0; gen < maxGenerations; gen++) {
 
             /* Evaluate fitnesses */
             int[] fitnesses = evaluatePopulation(population);
 
             /* Track best */
-            for (int i = 0; i < POPULATION_SIZE; i++) {
+            for (int i = 0; i < populationSize; i++) {
                 if (fitnesses[i] > bestFitness) {
                     bestFitness    = fitnesses[i];
                     bestChromosome = population[i].clone();
@@ -106,11 +114,11 @@ public class GeneticAlgorithm {
             }
 
             /* Build next generation */
-            boolean[][] nextGen    = new boolean[POPULATION_SIZE][n];
-            int         eliteIdx   = argMax(fitnesses);
-            nextGen[0]             = population[eliteIdx].clone(); // elitism
+            boolean[][] nextGen  = new boolean[populationSize][n];
+            int         eliteIdx = argMax(fitnesses);
+            nextGen[0]           = population[eliteIdx].clone(); // elitism
 
-            for (int i = 1; i < POPULATION_SIZE; i += 2) {
+            for (int i = 1; i < populationSize; i += 2) {
 
                 /* Selection */
                 boolean[] parent1 = tournamentSelect(population, fitnesses);
@@ -133,7 +141,7 @@ public class GeneticAlgorithm {
                 mutate(child2);
 
                 nextGen[i] = child1;
-                if (i + 1 < POPULATION_SIZE) {
+                if (i + 1 < populationSize) {
                     nextGen[i + 1] = child2;
                 }
             }
@@ -146,7 +154,7 @@ public class GeneticAlgorithm {
 
         /* Final evaluation pass */
         int[] finalFitnesses = evaluatePopulation(population);
-        for (int i = 0; i < POPULATION_SIZE; i++) {
+        for (int i = 0; i < populationSize; i++) {
             if (finalFitnesses[i] > bestFitness) {
                 bestFitness    = finalFitnesses[i];
                 bestChromosome = population[i].clone();
@@ -163,16 +171,26 @@ public class GeneticAlgorithm {
     public int getBestFitness() { return bestFitness; }
 
     /* ------------------------------------------------------------------ */
-    /*  Initialisation                                                      */
+    /*  Initialisation – mixed greedy + random seeding                     */
     /* ------------------------------------------------------------------ */
 
     /**
-     * Creates a random population.  Each gene is set to true with
-     * probability 0.5 (uniform random binary encoding).
+     * Creates a population with 20% greedy-seeded individuals and 80% random.
+     * Seeding the population with high-quality greedy solutions accelerates
+     * convergence, while keeping 80% random preserves diversity.
      */
     private boolean[][] initialisePopulation(int n) {
-        boolean[][] pop = new boolean[POPULATION_SIZE][n];
-        for (int i = 0; i < POPULATION_SIZE; i++) {
+        boolean[][] pop = new boolean[populationSize][n];
+
+        /* Greedy seed: top 20% of population */
+        int greedyCount = Math.max(1, populationSize / 5);
+        boolean[] greedySeed = greedyInitial(n);
+        for (int i = 0; i < greedyCount; i++) {
+            pop[i] = perturbGreedy(greedySeed, n, 0.1);
+        }
+
+        /* Random individuals: remaining 80% */
+        for (int i = greedyCount; i < populationSize; i++) {
             for (int j = 0; j < n; j++) {
                 pop[i][j] = rng.nextBoolean();
             }
@@ -180,13 +198,40 @@ public class GeneticAlgorithm {
         return pop;
     }
 
+    /** Greedy solution sorted by descending value/weight ratio. */
+    private boolean[] greedyInitial(int n) {
+        boolean[] sol = new boolean[n];
+        Integer[] idx = new Integer[n];
+        for (int i = 0; i < n; i++) idx[i] = i;
+        Arrays.sort(idx, (a, b) -> Double.compare(
+            (double) instance.getValue(b) / instance.getWeight(b),
+            (double) instance.getValue(a) / instance.getWeight(a)));
+        int remaining = instance.getCapacity();
+        for (int i : idx) {
+            if (instance.getWeight(i) <= remaining) {
+                sol[i] = true;
+                remaining -= instance.getWeight(i);
+            }
+        }
+        return sol;
+    }
+
+    /** Randomly flips each bit in the greedy seed with given probability. */
+    private boolean[] perturbGreedy(boolean[] seed, int n, double prob) {
+        boolean[] sol = seed.clone();
+        for (int i = 0; i < n; i++) {
+            if (rng.nextDouble() < prob) sol[i] = !sol[i];
+        }
+        return sol;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Evaluation                                                          */
     /* ------------------------------------------------------------------ */
 
     private int[] evaluatePopulation(boolean[][] population) {
-        int[] fitnesses = new int[POPULATION_SIZE];
-        for (int i = 0; i < POPULATION_SIZE; i++) {
+        int[] fitnesses = new int[populationSize];
+        for (int i = 0; i < populationSize; i++) {
             fitnesses[i] = instance.evaluate(population[i]);
         }
         return fitnesses;
@@ -201,9 +246,9 @@ public class GeneticAlgorithm {
      * randomly pick TOURNAMENT_SIZE individuals and return the fittest.
      */
     private boolean[] tournamentSelect(boolean[][] population, int[] fitnesses) {
-        int best = rng.nextInt(POPULATION_SIZE);
+        int best = rng.nextInt(populationSize);
         for (int k = 1; k < TOURNAMENT_SIZE; k++) {
-            int challenger = rng.nextInt(POPULATION_SIZE);
+            int challenger = rng.nextInt(populationSize);
             if (fitnesses[challenger] > fitnesses[best]) {
                 best = challenger;
             }
@@ -217,25 +262,18 @@ public class GeneticAlgorithm {
 
     /**
      * Performs single-point crossover between two parents.
-     * A random cut-point is chosen in [1, n-1].  Child1 takes genes
-     * [0..cut-1] from parent1 and [cut..n-1] from parent2; child2
-     * takes the complementary segments.
+     * A random cut-point is chosen in [1, n-1].
      */
     private boolean[][] singlePointCrossover(boolean[] p1, boolean[] p2) {
         int n        = p1.length;
-        int cutPoint = 1 + rng.nextInt(n - 1);   // cut in [1, n-1]
+        int cutPoint = 1 + rng.nextInt(n - 1);
 
         boolean[] c1 = new boolean[n];
         boolean[] c2 = new boolean[n];
 
         for (int i = 0; i < n; i++) {
-            if (i < cutPoint) {
-                c1[i] = p1[i];
-                c2[i] = p2[i];
-            } else {
-                c1[i] = p2[i];
-                c2[i] = p1[i];
-            }
+            if (i < cutPoint) { c1[i] = p1[i]; c2[i] = p2[i]; }
+            else               { c1[i] = p2[i]; c2[i] = p1[i]; }
         }
         return new boolean[][] {c1, c2};
     }
@@ -245,11 +283,13 @@ public class GeneticAlgorithm {
     /* ------------------------------------------------------------------ */
 
     /**
-     * Flips each bit independently with probability MUTATION_RATE.
+     * Flips each bit independently with probability mutationRate (= 1/n).
+     * This gives on average exactly one mutation per chromosome, which is
+     * the standard recommendation for binary-encoded GAs.
      */
     private void mutate(boolean[] chromosome) {
         for (int i = 0; i < chromosome.length; i++) {
-            if (rng.nextDouble() < MUTATION_RATE) {
+            if (rng.nextDouble() < mutationRate) {
                 chromosome[i] = !chromosome[i];
             }
         }
@@ -259,45 +299,29 @@ public class GeneticAlgorithm {
     /*  Repair Operator                                                     */
     /* ------------------------------------------------------------------ */
 
-    /**
-     * Repairs all infeasible solutions in the population.
-     * Infeasible solutions (overweight) are fixed by removing items in
-     * ascending value/weight ratio order until the weight constraint
-     * is satisfied.  This greedy repair is computationally cheap and
-     * preserves as much value as possible.
-     */
     private void repairPopulation(boolean[][] population) {
-        for (boolean[] chrom : population) {
-            repair(chrom);
-        }
+        for (boolean[] chrom : population) repair(chrom);
     }
 
     /**
-     * Repairs a single chromosome.
-     *
-     * Strategy:
-     *   While totalWeight > capacity:
-     *     Remove the selected item with the LOWEST value/weight ratio.
-     *   (Removes least valuable items first to minimise value loss.)
+     * Repairs a single chromosome by removing items in ascending
+     * value/weight ratio order until the weight constraint is satisfied.
      */
     private void repair(boolean[] chromosome) {
         int n = instance.getNumItems();
-
-        /* Build a list of selected item indices sorted by value/weight asc */
         while (instance.totalWeight(chromosome) > instance.getCapacity()) {
             int    worstIdx   = -1;
             double worstRatio = Double.MAX_VALUE;
             for (int i = 0; i < n; i++) {
                 if (chromosome[i]) {
-                    double ratio = (double) instance.getValue(i)
-                            / instance.getWeight(i);
+                    double ratio = (double) instance.getValue(i) / instance.getWeight(i);
                     if (ratio < worstRatio) {
                         worstRatio = ratio;
                         worstIdx   = i;
                     }
                 }
             }
-            if (worstIdx == -1) break;   // nothing selected
+            if (worstIdx == -1) break;
             chromosome[worstIdx] = false;
         }
     }

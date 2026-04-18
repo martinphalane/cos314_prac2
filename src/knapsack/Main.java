@@ -8,19 +8,20 @@ import java.util.Scanner;
 
 public class Main {
 
-    private static final String DATA_DIR = "src/data/Knapsack Instances/";
+    private static final String DATA_DIR = "data/";
 
     private static final Object[][] INSTANCES = {
-        { "f1_l-d_kp_10_269",   "f1  l-d_kp_10_269",   0 },
-        { "f2_l-d_kp_20_878",   "f2  l-d_kp_20_878",   0 },
-        { "f3_l-d_kp_4_20",     "f3  l-d_kp_4_20",     0 },
-        { "f4_l-d_kp_4_11",     "f4  l-d_kp_4_11",     0 },
-        { "f5_l-d_kp_15_375",   "f5  l-d_kp_15_375",   0 },
-        { "f6_l-d_kp_10_60",    "f6  l-d_kp_10_60",    0 },
-        { "f7_l-d_kp_7_50",     "f7  l-d_kp_7_50",     0 },
-        { "f8_l-d_kp_23_10000", "f8  l-d_kp_23_10000", 0 },
-        { "f9_l-d_kp_5_80",     "f9  l-d_kp_5_80",     0 },
-        { "f10_l-d_kp_20_879",  "f10 l-d_kp_20_879",   0 },
+        { "f1_l-d_kp_10_269",    "f1  l-d_kp_10_269",    431  },
+        { "f2_l-d_kp_20_878",    "f2  l-d_kp_20_878",    1042 },
+        { "f3_l-d_kp_4_20",      "f3  l-d_kp_4_20",      11   },
+        { "f4_l-d_kp_4_11",      "f4  l-d_kp_4_11",      4    },
+        { "f5_l-d_kp_15_375",    "f5  l-d_kp_15_375",    648  },
+        { "f6_l-d_kp_10_60",     "f6  l-d_kp_10_60",     80   },
+        { "f7_l-d_kp_7_50",      "f7  l-d_kp_7_50",      26   },
+        { "f8_l-d_kp_23_10000",  "f8  l-d_kp_23_10000",  9777 },
+        { "f9_l-d_kp_5_80",      "f9  l-d_kp_5_80",      68   },
+        { "f10_l-d_kp_20_879",   "f10 l-d_kp_20_879",    1042 },
+        { "knapPI_1_100_1000_1", "knapPI_1_100_1000_1",  6384 },
     };
 
     public static void main(String[] args) throws Exception {
@@ -302,8 +303,7 @@ public class Main {
 
     private static void printWilcoxonSection(int[] ga, int[] ils) {
         System.out.println("=".repeat(78));
-        System.out.println("  STATISTICAL ANALYSIS - One-Tailed Wilcoxon Signed-Rank Test (a = 0.05)");
-        System.out.println("=".repeat(78));
+        System.out.println("  STATISTICAL ANALYSIS - One-Tailed Wilcoxon Signed-Rank Test (a = 0.05)");        System.out.println("=".repeat(78));
         System.out.println("\n  H0 : Median difference between GA and ILS is zero.");
         System.out.println("  H1 : GA performance > ILS performance (one-tailed).\n");
         System.out.printf("  %-25s %-12s %-12s %-12s%n","Instance","GA","ILS","Difference");

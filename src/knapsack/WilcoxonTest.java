@@ -120,15 +120,24 @@ public class WilcoxonTest {
         String  decision;
 
         if (effectiveN <= 25) {
-            /* Use exact critical value table (one-tailed α=0.05) */
+            /* Use exact critical value table (one-tailed a=0.05) */
             int wCritical = exactCriticalValue(effectiveN);
-            rejectH0 = (wStat <= wCritical);
-            decision = String.format(
-                "W+ = %.1f, W- = %.1f, W_stat = %.1f, W_critical(%d, α=0.05) = %d. " +
-                "%s",
-                wPlus, wMinus, wStat, effectiveN, wCritical,
-                rejectH0 ? "REJECT H0: significant difference detected."
-                          : "FAIL TO REJECT H0: no significant difference at α=0.05.");
+            if (wCritical < 0) {
+                /* Not enough non-zero differences to apply the test */
+                rejectH0 = false;
+                decision = String.format(
+                    "W+ = %.1f, W- = %.1f. effectiveN = %d is too small for the " +
+                    "Wilcoxon table (need n >= 5). FAIL TO REJECT H0: insufficient " +
+                    "data to detect a significant difference at a=0.05.",
+                    wPlus, wMinus, effectiveN);
+            } else {
+                rejectH0 = (wStat <= wCritical);
+                decision = String.format(
+                    "W+ = %.1f, W- = %.1f, W_stat = %.1f, W_critical(%d, a=0.05) = %d. %s",
+                    wPlus, wMinus, wStat, effectiveN, wCritical,
+                    rejectH0 ? "REJECT H0: GA is significantly better than ILS."
+                              : "FAIL TO REJECT H0: no significant difference at a=0.05.");
+            }
         } else {
             /* Normal approximation */
             double mu    = (double) effectiveN * (effectiveN + 1) / 4.0;
@@ -136,14 +145,13 @@ public class WilcoxonTest {
                                     * (effectiveN + 1)
                                     * (2 * effectiveN + 1) / 24.0);
             double z     = (wStat - mu) / sigma;
-            double zCrit = -1.645;  // z for one-tailed α=0.05
+            double zCrit = -1.645;  // z for one-tailed a=0.05
             rejectH0 = (z < zCrit);
             decision = String.format(
-                "W+ = %.1f, W- = %.1f, z = %.4f, z_critical = %.3f. " +
-                "%s",
+                "W+ = %.1f, W- = %.1f, z = %.4f, z_critical = %.3f. %s",
                 wPlus, wMinus, z, zCrit,
-                rejectH0 ? "REJECT H0: significant difference detected."
-                          : "FAIL TO REJECT H0: no significant difference at α=0.05.");
+                rejectH0 ? "REJECT H0: GA is significantly better than ILS."
+                          : "FAIL TO REJECT H0: no significant difference at a=0.05.");
         }
 
         return new WilcoxonResult(wPlus, wMinus, effectiveN, rejectH0, decision);
