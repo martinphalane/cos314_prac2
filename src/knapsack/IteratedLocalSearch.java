@@ -28,14 +28,14 @@ import java.util.Random;
  *   Moves to the best improving neighbour; repeats until no improvement.
  *
  * PERTURBATION – Random k-Bit Flip:
- *   Randomly flips perturbationStrength bits (= max(4, n/10)).
+ *   Randomly flips perturbationStrength bits (= max(4, ceil(0.05 * n))).
  *
  * ACCEPTANCE – Strict Improvement:
  *   The new local optimum replaces the incumbent only if strictly better.
  *
  * CONFIGURATION (scales with instance size n):
  *   Max iterations          : max(1000, 100*n)
- *   Perturbation strength   : max(4, n/10)  bits flipped
+ *   Perturbation strength   : max(4, ceil(0.05 * n))  bits flipped
  * =============================================================================
  */
 public class IteratedLocalSearch {
@@ -72,7 +72,7 @@ public class IteratedLocalSearch {
 
         /* Adaptive parameters */
         maxIterations        = Math.min(Math.max(1000, 20 * n), 3000);
-        perturbationStrength = Math.max(4, n / 10);
+        perturbationStrength = Math.max(4, (int) Math.ceil(0.05 * n));
 
         /* ---- Step 1: Greedy initial solution ---- */
         boolean[] current = generateInitialSolution(n);
@@ -183,8 +183,8 @@ public class IteratedLocalSearch {
     /* ------------------------------------------------------------------ */
 
     /**
-     * Randomly flips perturbationStrength (= max(4, n/10)) bits.
-     * Flipping ~10% of genes creates jumps large enough to escape local
+     * Randomly flips perturbationStrength (= max(4, ceil(0.05 * n))) bits.
+     * Flipping ~5% of genes creates jumps large enough to escape local
      * optima while retaining useful solution structure.
      */
     private boolean[] perturb(boolean[] solution) {
