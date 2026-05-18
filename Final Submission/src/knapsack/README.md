@@ -34,10 +34,12 @@ Runs both GA and ILS on all instances with one user-supplied seed.
 Produces the comparison table and Wilcoxon test output.
 
 ```
+
 Choice: 1
 Custom path: <Enter>
-Seed: 42
+Seed: -5605117443333205400 
 ```
+This the seed that got the best result
 
 ### Mode 2 – Multiple Seeds (30+)
 Runs both algorithms over N random seeds (min 30), shows per-seed
